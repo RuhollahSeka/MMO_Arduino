@@ -1,24 +1,45 @@
 package model;
 
-import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class Cell
 {
     private int row;
     private int column;
-    private CellState state;
-    private ArrayList<Cell> neighbours;
+    private boolean isWall;
+    private boolean hasCoin;
+    private Set<Player> players;
+    private List<Cell> neighbours;
 
     public Cell(int row, int column, boolean isWall)
     {
         this.row = row;
         this.column = column;
-        this.state = isWall ? CellState.WALL : CellState.EMPTY;
+        this.isWall = isWall;
+        this.hasCoin = false;
+        this.players = new HashSet<>();
     }
 
     public Cell(int row, int column)
     {
         this(row, column, false);
+    }
+
+    public void addPlayer(Player player)
+    {
+        this.players.add(player);
+    }
+
+    public void removePlayer(Player player)
+    {
+        this.players.remove(player);
+    }
+
+    public boolean hasPlayers()
+    {
+        return !players.isEmpty();
     }
 
     public int getRow()
@@ -31,23 +52,38 @@ public class Cell
         return column;
     }
 
-    public CellState getState()
+    public boolean isWall()
     {
-        return state;
+        return isWall;
     }
 
-    public void setState(CellState state)
+    public boolean isHasCoin()
     {
-        this.state = state;
+        return hasCoin;
     }
 
-    public ArrayList<Cell> getNeighbours()
+    public void setWall(boolean wall)
+    {
+        isWall = wall;
+    }
+
+    public void setHasCoin(boolean hasCoin)
+    {
+        this.hasCoin = hasCoin;
+    }
+
+    public List<Cell> getNeighbours()
     {
         return neighbours;
     }
 
-    public void setNeighbours(ArrayList<Cell> neighbours)
+    public void setNeighbours(List<Cell> neighbours)
     {
         this.neighbours = neighbours;
+    }
+
+    public Set<Player> getPlayers()
+    {
+        return players;
     }
 }
