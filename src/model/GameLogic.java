@@ -1,24 +1,23 @@
 package model;
 
+import javafx.util.Pair;
+import message.ClientMessage;
 import message.Direction;
 import message.ReceivedMessage;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class GameLogic
 {
     private Map map;
     private HashMap<String, Player> playersMap;
-    private HashMap<String, MiniGame> miniGames;
+    private Set<MiniGame> miniGames;
 
     public GameLogic()
     {
         this.map = new Map(100, 100);
         this.playersMap = new HashMap<>();
-        this.miniGames = new HashMap<>();
+        this.miniGames = new HashSet<>();
     }
 
     public boolean addPlayer(String username)
@@ -47,12 +46,69 @@ public class GameLogic
         }
 
         checkCoins();
+        deleteFinishedMiniGames(); // TODO respawn players
+        changeMiniGameTurns();
         startMiniGames();
+    }
+
+    private void changeMiniGameTurns()
+    {
+        miniGames.forEach(MiniGame::changeTurn);
+    }
+
+    private void deleteFinishedMiniGames()
+    {
+        Set<MiniGame> finishedMiniGames = new HashSet<>();
+
+        for (MiniGame miniGame : miniGames)
+        {
+            if (miniGame.getWinnerId() != -1)
+            {
+                finishedMiniGames.add(miniGame);
+            }
+        }
+        miniGames.removeAll(finishedMiniGames);
     }
 
     private void startMiniGames()
     {
-        // TODO
+        Set<Cell> conflictCells = findConflictedCells();
+        ArrayList<Pair<Player, Player>> matchedPlayers = matchPlayers(conflictCells);
+        matchedPlayers.forEach(aMatch -> {
+            MiniGame miniGame = new MiniGame();
+            miniGames.add(miniGame);
+            aMatch.getKey().setMiniGame(miniGame, 0);
+            aMatch.getValue().setMiniGame(miniGame, 1);
+        });
+    }
+
+    private ArrayList<Pair<Player, Player>> matchPlayers(Set<Cell> conflictCells)
+    {
+        ArrayList<Pair<Player, Player>> resultPlayers = new ArrayList<>();
+
+        for (Cell cell : conflictCells)
+        {
+            ArrayList<Pair<Player, Player>> cellMatches = cell.getPlayerMatches();
+            resultPlayers.addAll(cellMatches);
+        }
+
+        return resultPlayers;
+    }
+
+    private Set<Cell> findConflictedCells()
+    {
+        Set<Cell> resultCells = new HashSet<>();
+
+        for (Player player : playersMap.values())
+        {
+            Cell cell = player.getCell();
+            if (cell.getPlayers().size() > 1)
+            {
+                resultCells.add(cell);
+            }
+        }
+
+        return resultCells;
     }
 
     private void checkCoins()
@@ -82,5 +138,12 @@ public class GameLogic
     {
         Cell targetCell = map.getNeighbour(player.getCell(), direction);
         player.move(targetCell);
+    }
+
+    public ArrayList<ClientMessage> getClientMessages()
+    {
+        ArrayList<ClientMessage> clientMessages = new ArrayList<>();
+        playersMap.forEach((s, player) -> clientMessages.add(player.getClientMessage()));
+        return clientMessages;
     }
 }
