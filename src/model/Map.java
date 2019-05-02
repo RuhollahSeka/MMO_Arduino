@@ -31,6 +31,7 @@ public class Map
 
     private void initCells()
     {
+        cells = new Cell[rowLength][columnLength];
         setAllEmpty();
         setSideWalls();
         generateRandomWalls();
@@ -130,13 +131,12 @@ public class Map
         {
             int otherRowIndex = rowLength - i - 1;
 
-            for (int j = 0; j < SIDE_WALL_LENGTH; j++)
+            for (int j = 0; j < columnLength; j++)
             {
-                int otherColumnIndex = columnLength - j - 1;
                 addWall(i, j);
-                addWall(i, otherColumnIndex);
                 addWall(otherRowIndex, j);
-                addWall(otherRowIndex, otherColumnIndex);
+                addWall(j, i);
+                addWall(j, otherRowIndex);
             }
         }
     }

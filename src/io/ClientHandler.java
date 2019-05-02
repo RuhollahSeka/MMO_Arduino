@@ -37,17 +37,45 @@ public class ClientHandler
     {
         ClientNetwork client = new ClientNetwork(username, port);
         clientNetworks.put(username, client);
+//        try
+//        {
+//            Thread.sleep(100);
+//        } catch (InterruptedException e)
+//        {
+//            e.printStackTrace();
+//        }
     }
 
     public List<ReceivedMessage> getReceivedMessages()
     {
         List<ReceivedMessage> receivedMessages = new ArrayList<>();
-        clientNetworks.forEach((s, clientNetwork) -> receivedMessages.add(clientNetwork.getReceivedMessage()));
+        clientNetworks.forEach((s, clientNetwork) -> {
+            ReceivedMessage receivedMessage = clientNetwork.getReceivedMessage();
+            if (receivedMessage != null)
+            {
+                receivedMessages.add(receivedMessage);
+            }
+        });
         return receivedMessages;
     }
 
     public void close()
     {
         clientNetworks.forEach((s, clientNetwork) -> clientNetwork.close());
+    }
+
+    public ArrayList<String> getDisconnectedClients()
+    {
+        ArrayList<String> disconnectedClients = new ArrayList<>();
+        clientNetworks.forEach((s, clientNetwork) -> {
+            if (!clientNetwork.isConnected())
+            {
+                clientNetwork.close();
+                disconnectedClients.add(s);
+                System.err.println(s + " got disconnected");
+            }
+        });
+        disconnectedClients.forEach(disconnectedClient -> clientNetworks.remove(disconnectedClient));
+        return disconnectedClients;
     }
 }

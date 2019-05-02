@@ -12,15 +12,19 @@ public class Player
     private String username;
     private Cell cell;
     private int score;
+    private int continuousCoinCount;
+    private int minigameWait;
 
     private Pair<MiniGame, Integer> miniGameData;
 
-    public Player(String username, Cell cell)
+    public Player(String username, Cell cell, int score)
     {
         this.username = username;
         this.cell = cell;
         this.cell.addPlayer(this);
-        this.score = 0;
+        this.score = score;
+        this.continuousCoinCount = 0;
+        this.minigameWait = 0;
     }
 
     public void playMiniGame(boolean isButtonPushed, Direction direction)
@@ -35,16 +39,23 @@ public class Player
         if (!isButtonPushed)
         {
             miniGame.movePointer(id, direction);
+            incrementMinigameWait();
+            return;
+        }
+
+        if (!miniGame.putPiece(id))
+        {
+            incrementMinigameWait();
             return;
         }
         int winnerId = miniGame.getWinnerId();
-        miniGame.putPiece(id);
+        minigameWait = 0;
         if (winnerId == -1)
         {
             return;
         }
 
-        miniGameData = null;
+//        miniGameData = null;
         if (winnerId == -2)
         {
             receiveCoin(1);
@@ -53,14 +64,39 @@ public class Player
         receiveCoin(5);
     }
 
+    private void incrementMinigameWait()
+    {
+        minigameWait++;
+        if (minigameWait > 70)
+        {
+            miniGameData.getKey().putRandomPiece(miniGameData.getValue());
+            int winnerId = miniGameData.getKey().getWinnerId();
+            minigameWait = 0;
+            if (winnerId == -1)
+            {
+                return;
+            }
+
+            if (winnerId == -2)
+            {
+                receiveCoin(1);
+                return;
+            }
+            receiveCoin(5);
+        }
+    }
+
     public void move(Cell targetCell)
     {
-        if (miniGameData != null || targetCell == null)
+        if (miniGameData != null || targetCell == null || (targetCell.isHasCoin() && continuousCoinCount >= 5))
         {
             return;
         }
 
-        this.cell.removePlayer(this);
+        if (this.cell != null)
+        {
+            this.cell.removePlayer(this);
+        }
         targetCell.addPlayer(this);
         this.cell = targetCell;
     }
@@ -68,6 +104,7 @@ public class Player
     public void receiveCoin()
     {
         receiveCoin(1);
+        this.continuousCoinCount++;
     }
 
     public void receiveCoin(int num)
@@ -77,6 +114,7 @@ public class Player
 
     public void setMiniGame(MiniGame miniGame, int id)
     {
+        this.continuousCoinCount = 0;
         this.miniGameData = new Pair<>(miniGame, id);
         this.cell.removePlayer(this);
         this.cell = null;
@@ -132,5 +170,24 @@ public class Player
     public int getScore()
     {
         return score;
+    }
+
+    public MiniGame getMiniGame()
+    {
+        if (miniGameData == null)
+        {
+            return null;
+        }
+        return miniGameData.getKey();
+    }
+
+    public void incScore()
+    {
+        score++;
+    }
+
+    public void endMiniGame()
+    {
+        miniGameData = null;
     }
 }

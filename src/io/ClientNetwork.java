@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
 
@@ -24,6 +25,7 @@ public class ClientNetwork
     private ReceivedMessage receivedMessage;
 
     private Thread receivingThread;
+    private boolean isConnected = true;
 
     public ClientNetwork(String username, int port)
     {
@@ -40,16 +42,22 @@ public class ClientNetwork
             try
             {
                 ServerSocket serverSocket = new ServerSocket(port);
+                serverSocket.setSoTimeout(10000);
                 this.closeables.add(serverSocket);
                 Socket socket = serverSocket.accept();
+                socket.setReceiveBufferSize(2);
+                socket.setSoTimeout(200);
                 this.closeables.add(socket);
                 in = socket.getInputStream();
                 out = socket.getOutputStream();
                 closeables.add(in);
                 closeables.add(out);
+                System.err.println("socket created");
             } catch (IOException e)
             {
-                e.printStackTrace();
+                System.err.println("Socket failed for " + username);
+                this.isConnected = false;
+//                e.printStackTrace();
             }
         }).start();
     }
@@ -63,7 +71,7 @@ public class ClientNetwork
 //        {
 //            e.printStackTrace();
 //        }
-        if (receivingThread.isAlive())
+        if (receivingThread != null && receivingThread.isAlive())
         {
             receivingThread.interrupt();
         }
@@ -72,6 +80,10 @@ public class ClientNetwork
     public void startReceiving()
     {
 //        this.receivingSemaphore.release();
+        if (in == null)
+        {
+            return;
+        }
         receivingThread = new Thread(this::receive);
         receivingThread.start();
     }
@@ -81,14 +93,25 @@ public class ClientNetwork
         try
         {
 //            receivingSemaphore.acquire();
-            int dir = in.read();
-            boolean pushed = in.read() == 1;
+            byte[] bytes = new byte[2];
+            in.read(bytes);
+            int dir = bytes[0];
+            boolean pushed = bytes[1] == 1;
             Thread.sleep(10);
+//            System.err.println("Received, dir: " + dir + ", pushed: " + pushed);
             this.receivedMessage = new ReceivedMessage(username, Utils.getDirection(dir), pushed);
 //            receivingSemaphore.release();
         } catch (IOException | InterruptedException e)
         {
-            e.printStackTrace();
+            if (e instanceof SocketTimeoutException)
+            {
+//                System.err.println("Socket timeout for " + username);
+            } else
+            {
+                this.isConnected = false;
+                System.err.println("Failed to receive from " + username);
+//                e.printStackTrace();
+            }
         }
     }
 
@@ -102,10 +125,12 @@ public class ClientNetwork
         new Thread(() -> {
             try
             {
+//                System.err.println("Message: " + message);
                 out.write(message);
             } catch (IOException e)
             {
-                e.printStackTrace();
+                this.isConnected = false;
+                System.err.println("Failed to send to " + username);
             }
         }).start();
     }
@@ -127,5 +152,10 @@ public class ClientNetwork
             }
         });
 
+    }
+
+    public boolean isConnected()
+    {
+        return isConnected;
     }
 }
